@@ -90,6 +90,50 @@ outputs:
 runs:
   using: composite
   steps:
+    - name: Subscription check
+      shell: bash
+      env:
+        REPO_PRIVATE: ${{ github.event.repository.private }}
+      run: |
+        UPSTREAM="subosito/flutter-action"
+        ACTION_REPO="${GITHUB_ACTION_REPOSITORY:-}"
+        DOCS_URL="https://docs.stepsecurity.io/actions/stepsecurity-maintained-actions"
+
+        echo ""
+        echo -e "\033[1;36mStepSecurity Maintained Action\033[0m"
+        echo "Secure drop-in replacement for $UPSTREAM"
+        if [ "$REPO_PRIVATE" = "false" ]; then
+          echo -e "\033[32m✓ Free for public repositories\033[0m"
+        fi
+        echo -e "\033[36mLearn more:\033[0m $DOCS_URL"
+        echo ""
+
+        if [ "$REPO_PRIVATE" != "false" ]; then
+          SERVER_URL="${GITHUB_SERVER_URL:-https://github.com}"
+
+          if [ "$SERVER_URL" != "https://github.com" ]; then
+            BODY=$(printf '{"action":"%s","ghes_server":"%s"}' "$ACTION_REPO" "$SERVER_URL")
+          else
+            BODY=$(printf '{"action":"%s"}' "$ACTION_REPO")
+          fi
+
+          API_URL="https://agent.api.stepsecurity.io/v1/github/$GITHUB_REPOSITORY/actions/maintained-actions-subscription"
+
+          RESPONSE=$(curl --max-time 3 -s -w "%{http_code}" \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -d "$BODY" \
+            "$API_URL" -o /dev/null) && CURL_EXIT_CODE=0 || CURL_EXIT_CODE=$?
+
+          if [ $CURL_EXIT_CODE -ne 0 ]; then
+            echo "Timeout or API not reachable. Continuing to next step."
+          elif [ "$RESPONSE" = "403" ]; then
+            echo -e "::error::\033[1;31mThis action requires a StepSecurity subscription for private repositories.\033[0m"
+            echo -e "::error::\033[31mLearn how to enable a subscription: $DOCS_URL\033[0m"
+            exit 1
+          fi
+        fi
+
     # This is a cross-platform composite action that needs yq in order to parse
     # the pubspec.yaml file.
     # It's not preinstalled on Windows runners.
@@ -106,17 +150,27 @@ runs:
     - name: Set action inputs
       id: flutter-action
       shell: bash
+      env:
+        FLUTTER_VERSION: ${{ inputs.flutter-version }}
+        FLUTTER_VERSION_FILE: ${{ inputs.flutter-version-file }}
+        FLUTTER_ARCHITECTURE: ${{ inputs.architecture }}
+        FLUTTER_CACHE_KEY: ${{ inputs.cache-key }}
+        FLUTTER_CACHE_PATH: ${{ inputs.cache-path }}
+        FLUTTER_PUB_CACHE_KEY: ${{ inputs.pub-cache-key }}
+        FLUTTER_PUB_CACHE_PATH: ${{ inputs.pub-cache-path }}
+        FLUTTER_GIT_SOURCE: ${{ inputs.git-source }}
+        FLUTTER_CHANNEL: ${{ inputs.channel }}
       run: |
         $GITHUB_ACTION_PATH/setup.sh -p \
-          -n '${{ inputs.flutter-version }}' \
-          -f '${{ inputs.flutter-version-file }}' \
-          -a '${{ inputs.architecture }}' \
-          -k '${{ inputs.cache-key }}' \
-          -c '${{ inputs.cache-path }}' \
-          -l '${{ inputs.pub-cache-key }}' \
-          -d '${{ inputs.pub-cache-path }}' \
-          -g '${{ inputs.git-source }}' \
-          ${{ inputs.channel }}
+          -n "$FLUTTER_VERSION" \
+          -f "$FLUTTER_VERSION_FILE" \
+          -a "$FLUTTER_ARCHITECTURE" \
+          -k "$FLUTTER_CACHE_KEY" \
+          -c "$FLUTTER_CACHE_PATH" \
+          -l "$FLUTTER_PUB_CACHE_KEY" \
+          -d "$FLUTTER_PUB_CACHE_PATH" \
+          -g "$FLUTTER_GIT_SOURCE" \
+          "$FLUTTER_CHANNEL"
 
     - name: Cache Flutter
       id: cache-flutter

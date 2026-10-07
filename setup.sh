@@ -44,8 +44,28 @@ download_archive() {
 	archive_url="$MANIFEST_BASE_URL/$1"
 	archive_name=$(basename "$1")
 	archive_local="$RUNNER_TEMP/$archive_name"
+	expected_sha256="$3"
+
+	compute_sha256() {
+		if check_command sha256sum; then
+			sha256sum "$1" | awk '{print $1}'
+		elif check_command shasum; then
+			shasum -a 256 "$1" | awk '{print $1}'
+		fi
+	}
 
 	curl --connect-timeout 15 --retry 5 "$archive_url" >"$archive_local"
+
+	if [ -z "$expected_sha256" ] || [ "$expected_sha256" = "null" ]; then
+		echo "Warning: no sha256 in manifest for $archive_name, skipping integrity check"
+	else
+		actual_sha256=$(compute_sha256 "$archive_local")
+		if [ -z "$actual_sha256" ]; then
+			echo "Warning: no sha256 tool found, skipping integrity check"
+		elif [ "$actual_sha256" != "$expected_sha256" ]; then
+			echo "Warning: checksum mismatch for $archive_name: expected $expected_sha256, got $actual_sha256"
+		fi
+	fi
 
 	mkdir -p "$2"
 
@@ -231,7 +251,8 @@ if [ ! -x "$CACHE_PATH/flutter/bin/flutter" ]; then
 		fi
 	else
 		archive_url=$(echo "$VERSION_MANIFEST" | jq -r '.archive')
-		download_archive "$archive_url" "$CACHE_PATH"
+		archive_sha256=$(echo "$VERSION_MANIFEST" | jq -r '.sha256')
+		download_archive "$archive_url" "$CACHE_PATH" "$archive_sha256"
 	fi
 fi
 

@@ -354,7 +354,7 @@ dynamic values:
 >   - If there's a cache hit, this will be 'true' or 'false' to indicate if there's an exact match for `key`.
 >   - If there's a cache miss, this will be an empty string.
 
-Example usage (inspired by [actions/cache@v5](https://github.com/actions/cache/blob/v5/README.md#skipping-steps-based-on-cache-hit) and [#346](https://github.com/step-security/flutter-action/pull/346)) to skip `melos bootstrap` if there was a pub cache hit:
+Example usage (inspired by [actions/cache@v5](https://github.com/actions/cache/blob/v5/README.md#skipping-steps-based-on-cache-hit) to skip `melos bootstrap` if there was a pub cache hit:
 
 ```yaml
 steps:
