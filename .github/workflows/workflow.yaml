@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - main
-      - dev
   pull_request:
     paths:
       - setup.sh
@@ -17,32 +16,26 @@ jobs:
 
     steps:
       - name: Clone repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Run shellcheck
-        uses: ludeeus/action-shellcheck@master
+        uses: step-security/action-shellcheck@v2
 
   test_channel:
     runs-on: ${{ matrix.operating-system }}
 
     strategy:
       matrix:
-        operating-system:
-          - ubuntu-latest
-          - windows-latest
-          - macos-latest
-        channel: [stable, beta, master]
-        dry-run: [true, false]
-        git-source:
-          - https://github.com/flutter/flutter.git
-          - https://github.com/Flutter-Foundation/flutter.git
-          - https://gitee.com/harmonycommando_flutter/flutter.git
+        operating-system: ${{ github.actor == 'dependabot[bot]' && fromJSON('["ubuntu-latest"]') || fromJSON('["ubuntu-latest", "macos-latest", "windows-latest"]') }}
+        channel: ${{ github.actor == 'dependabot[bot]' && fromJSON('["stable"]') || fromJSON('["stable", "beta", "master"]') }}
+        dry-run: ${{ github.actor == 'dependabot[bot]' && fromJSON('[false]') || fromJSON('[true, false]') }}
+        git-source: ${{ github.actor == 'dependabot[bot]' && fromJSON('["https://github.com/flutter/flutter.git"]') || fromJSON('["https://github.com/flutter/flutter.git", "https://github.com/Flutter-Foundation/flutter.git", "https://gitee.com/harmonycommando_flutter/flutter.git"]') }}
         include:
           - operating-system: ubuntu-latest
             channel: main
 
     steps:
       - name: Clone repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - id: flutter-action
         uses: ./
         with:
@@ -78,12 +71,11 @@ jobs:
 
     strategy:
       matrix:
-        operating-system:
-          [ubuntu-latest, windows-latest, macos-latest]
+        operating-system: ${{ github.actor == 'dependabot[bot]' && fromJSON('["ubuntu-latest"]') || fromJSON('["ubuntu-latest", "windows-latest", "macos-latest"]') }}
 
     steps:
       - name: Clone repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - uses: ./
         with:
           channel: stable
@@ -99,11 +91,11 @@ jobs:
 
     strategy:
       matrix:
-        operating-system: [ubuntu-latest]
+        operating-system: ${{ github.actor == 'dependabot[bot]' && fromJSON('["ubuntu-latest"]') || fromJSON('["ubuntu-latest"]') }}
 
     steps:
       - name: Clone repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - uses: ./
         with:
           channel: stable
@@ -120,11 +112,11 @@ jobs:
 
     strategy:
       matrix:
-        operating-system: [ubuntu-latest, macos-latest]
+        operating-system: ${{ github.actor == 'dependabot[bot]' && fromJSON('["ubuntu-latest"]') || fromJSON('["ubuntu-latest", "macos-latest"]') }}
 
     steps:
       - name: Clone repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - id: flutter-action
         uses: ./
         with:
@@ -152,7 +144,7 @@ jobs:
 
     steps:
       - name: Clone repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - run: ./setup.sh -t -p -f test/pubspec.yaml   | grep '3.3.10'
         shell: bash
       - run: ./setup.sh -t -p                        | grep 'stable'
@@ -242,6 +234,7 @@ jobs:
 
 
   test_print_output_arm64:
+    if: github.actor != 'dependabot[bot]'
     runs-on: macos-latest
 
     # These calls to setup.sh sepcify the -t flag, which enables test mode.
@@ -249,7 +242,7 @@ jobs:
 
     steps:
       - name: Clone repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - run: ./setup.sh -t -p -f test/pubspec.yaml   | grep '3.3.10'
         shell: bash
       - run: ./setup.sh -t -p                        | grep 'stable'
